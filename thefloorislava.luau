@@ -199,9 +199,7 @@ local function raiseLava()
 	Lava.CFrame = CFrame.new(0,CFG.lavaStartY,0) -- reset hazard for next round
 end
 
-------------------------------
 -- Teleport system (ensures synchronized round start)
-------------------------------
 
 local function teleport(plr)
 	if not plr.Character then plr:LoadCharacter() task.wait(0.15) end -- ensure body loaded
@@ -218,9 +216,7 @@ Players.PlayerAdded:Connect(function(plr)
 	end)
 end)
 
-------------------------------
 -- Early elimination check
-------------------------------
 
 local function everyoneDead()
 	for _,plr in ipairs(Players:GetPlayers()) do
@@ -230,9 +226,7 @@ local function everyoneDead()
 	return true -- no players alive → early round termination
 end
 
-------------------------------
 -- Round lifecycle
-------------------------------
 
 local function runRound()
 	fillPool() -- start with fresh reusable resources
