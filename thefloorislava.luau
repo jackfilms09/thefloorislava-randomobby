@@ -1,4 +1,4 @@
-local Players = game:GetService("Players") -- used for iterating survivors and teleporting each round
+local Players = game:GetService("Players") -- used for getting survivors and teleporting each round
 local ReplicatedStorage = game:GetService("ReplicatedStorage") -- holds the RemoteEvent that broadcasts round state
 local Workspace = game:GetService("Workspace") -- world container that platforms, lava, and spawn exist inside
 local Debris = game:GetService("Debris") -- available for timed cleanup though pooling avoids most use
@@ -102,7 +102,49 @@ local state = {
 	active = {} -- list of currently visible platforms
 }
 
--- Pooling helpers (performance-critical)
+-- Random colored bonus orb spawner
+local function SpawnBonusOrb()
+	if not state.running then return end
+	local activePlatforms = Active:GetChildren()
+	if #activePlatforms == 0 then return end
+
+	local randomPlatform = activePlatforms[math.random(1, #activePlatforms)]
+	local base = randomPlatform:FindFirstChildWhichIsA("BasePart")
+	if not base then return end
+
+	local orb = Instance.new("Part")
+	orb.Shape = Enum.PartType.Ball
+	orb.Size = Vector3.new(3,3,3)
+	orb.Color = Color3.fromRGB(math.random(50,255), math.random(50,255), math.random(50,255))
+	orb.Material = Enum.Material.Neon
+	orb.Anchored = true
+	orb.Position = base.Position + Vector3.new(0, 6, 0)
+	orb.Parent = Workspace
+
+	orb.Touched:Connect(function(hit)
+		local hum = hit.Parent:FindFirstChildOfClass("Humanoid")
+		if hum then
+			print("BONUS ORB COLLECTED by:", hit.Parent.Name)
+			orb:Destroy()
+		end
+	end)
+
+	task.delay(8, function()
+		if orb and orb.Parent then orb:Destroy() end
+	end)
+end
+
+-- Periodic spawner loop
+task.spawn(function()
+	while true do
+		task.wait(12)
+		if state.running then
+			SpawnBonusOrb()
+		end
+	end
+end)
+
+-- Pooling helpers 
 
 local function getPrimary(model)
 	return model.PrimaryPart -- always access via PrimaryPart for consistent transforms
