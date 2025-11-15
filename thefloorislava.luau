@@ -1,4 +1,4 @@
---Updated script for re-review with added Physics of platforms falling on touch and fading out :)
+--Floor is lava game with Rounds system + timer uis + where platforms are randomly generated + fall on touch and fade out
 
 local Players = game:GetService("Players") -- used for iterating survivors and teleporting each round
 local ReplicatedStorage = game:GetService("ReplicatedStorage") -- holds the RemoteEvent that broadcasts round state
