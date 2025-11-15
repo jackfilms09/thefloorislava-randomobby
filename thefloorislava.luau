@@ -104,11 +104,6 @@ local state = {
 	active = {} -- list of currently visible platforms
 }
 
-
----------------------------------------------------------
--- UPDATED makeFall WITH PLATFORM RESPAWN
----------------------------------------------------------
--- REPLACE your makeFall(m) with this robust version
 local function makeFall(m)
 	-- defensive checks
 	if not m or not m.PrimaryPart then return end
