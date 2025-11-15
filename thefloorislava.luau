@@ -1,5 +1,5 @@
 --Floor is lava game with Rounds system + timer uis + where platforms are randomly generated + fall on touch and fade out
-
+--Updated for re-review :)
 local Players = game:GetService("Players") -- used for iterating survivors and teleporting each round
 local ReplicatedStorage = game:GetService("ReplicatedStorage") -- holds the RemoteEvent that broadcasts round state
 local Workspace = game:GetService("Workspace") -- world container that platforms, lava, and spawn exist inside
