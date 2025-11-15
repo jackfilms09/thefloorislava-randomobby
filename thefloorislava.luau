@@ -1,4 +1,6 @@
-local Players = game:GetService("Players") -- used for getting survivors and teleporting each round
+--Updated script for re-review with added Physics of platforms falling on touch and fading out :)
+
+local Players = game:GetService("Players") -- used for iterating survivors and teleporting each round
 local ReplicatedStorage = game:GetService("ReplicatedStorage") -- holds the RemoteEvent that broadcasts round state
 local Workspace = game:GetService("Workspace") -- world container that platforms, lava, and spawn exist inside
 local Debris = game:GetService("Debris") -- available for timed cleanup though pooling avoids most use
@@ -102,49 +104,70 @@ local state = {
 	active = {} -- list of currently visible platforms
 }
 
--- Random colored bonus orb spawner
-local function SpawnBonusOrb()
-	if not state.running then return end
-	local activePlatforms = Active:GetChildren()
-	if #activePlatforms == 0 then return end
 
-	local randomPlatform = activePlatforms[math.random(1, #activePlatforms)]
-	local base = randomPlatform:FindFirstChildWhichIsA("BasePart")
-	if not base then return end
+---------------------------------------------------------
+-- UPDATED makeFall WITH PLATFORM RESPAWN
+---------------------------------------------------------
+-- REPLACE your makeFall(m) with this robust version
+local function makeFall(m)
+	-- defensive checks
+	if not m or not m.PrimaryPart then return end
+	local p = m.PrimaryPart
 
-	local orb = Instance.new("Part")
-	orb.Shape = Enum.PartType.Ball
-	orb.Size = Vector3.new(3,3,3)
-	orb.Color = Color3.fromRGB(math.random(50,255), math.random(50,255), math.random(50,255))
-	orb.Material = Enum.Material.Neon
-	orb.Anchored = true
-	orb.Position = base.Position + Vector3.new(0, 6, 0)
-	orb.Parent = Workspace
+	-- avoid double-trigger
+	if p:GetAttribute("Falling") then return end
+	p:SetAttribute("Falling", true)
 
-	orb.Touched:Connect(function(hit)
-		local hum = hit.Parent:FindFirstChildOfClass("Humanoid")
-		if hum then
-			print("BONUS ORB COLLECTED by:", hit.Parent.Name)
-			orb:Destroy()
-		end
-	end)
+	-- remember original position so respawn is exact
+	local originalCF = p.CFrame
 
-	task.delay(8, function()
-		if orb and orb.Parent then orb:Destroy() end
-	end)
-end
+	-- short delay before releasing physics
+	task.wait(1)
 
--- Periodic spawner loop
-task.spawn(function()
-	while true do
-		task.wait(12)
-		if state.running then
-			SpawnBonusOrb()
+	-- enable physics fall
+	p.Anchored = false
+
+	-- fade out smoothly (clamped)
+	for t = 0, 1, 0.1 do
+		p.Transparency = math.clamp(t, 0, 1)
+		task.wait(0.05)
+	end
+
+	-- remove from active list safely
+	for i = #state.active, 1, -1 do
+		if state.active[i] == m then
+			table.remove(state.active, i)
+			break
 		end
 	end
-end)
 
--- Pooling helpers 
+	-- destroy the fallen model so it doesn't remain in the world or pool
+	if m and m.Parent then
+		-- disconnect any possible connections and then destroy
+		-- (we don't have direct references to connections here, so destroy is safest)
+		m:Destroy()
+	end
+
+	-- respawn a fresh platform from Templates after 1 second and put it into the pool
+	task.delay(1, function()
+		-- defensive: ensure there are templates
+		local templates = Templates:GetChildren()
+		if #templates == 0 then return end
+
+		local tpl = templates[math.random(1, #templates)]:Clone()
+		local primary = tpl.PrimaryPart
+		if primary then
+			primary.Anchored = true
+			primary.Transparency = 0
+			primary:SetAttribute("Falling", false)
+			primary.CFrame = originalCF -- respawn exactly where the fallen one was
+		end
+
+		-- make sure Pool folder exists and insert into both Pool and state.pool
+		tpl.Parent = Pool
+		table.insert(state.pool, tpl)
+	end)
+end
 
 local function getPrimary(model)
 	return model.PrimaryPart -- always access via PrimaryPart for consistent transforms
@@ -178,12 +201,10 @@ local function release(m) -- returns a platform back to hidden pool
 	table.insert(state.pool,m)
 end
 
--- Platform generation
-
 local function spawnPlatform(baseCF)
 	if #state.active >= CFG.maxActive then return end -- cap growth for performance consistency
 
-	local m = acquire() -- bring platform out of pool
+	local m = acquire()
 	local p = getPrimary(m)
 
 	local s = CFG.scaleMin + math.random()*(CFG.scaleMax-CFG.scaleMin) -- size-changes vary jumping difficulty
@@ -193,19 +214,36 @@ local function spawnPlatform(baseCF)
 	local dist = CFG.distMin + math.random()*(CFG.distMax-CFG.distMin) -- jump length variation
 	local height = 6 + math.random()*12 -- vertical offset produces multi-layer parkour
 
-	p.CFrame = baseCF + Vector3.new(math.cos(ang)*dist,height,math.sin(ang)*dist) -- place relative to parent node
-
+	p.CFrame = baseCF + Vector3.new(math.cos(ang)*dist,height,math.sin(ang)*dist)
 	m.Parent = Active -- moves into active list visible to players
 	table.insert(state.active,m)
 
-	task.delay(CFG.platformLife,function() -- schedule collapse to enforce forward progression
+
+	p:SetAttribute("Falling", false) -- NEW: initial state
+	local triggered = false -- NEW: ensures makeFall runs only once
+
+	p.Touched:Connect(function(hit)
+		if triggered then return end -- do nothing if already falling
+
+		local hum = hit.Parent and hit.Parent:FindFirstChildOfClass("Humanoid") -- check for player
+		if not hum then return end -- ignore non-player touches
+
+		triggered = true -- prevent further triggers
+		makeFall(m) -- NEW: platform fall + fade + respawn
+	end)
+
+
+	task.delay(CFG.platformLife,function()
+		if p:GetAttribute("Falling") then return end -- falling platforms ignore life timer
+
 		for i=#state.active,1,-1 do
 			if state.active[i] == m then
-				table.remove(state.active,i) -- unlink from active graph
+				table.remove(state.active,i)
 				break
 			end
 		end
-		release(m) -- recycle for future waves
+
+		release(m)
 	end)
 
 	return p.CFrame -- returned so spawnWave can branch from it
