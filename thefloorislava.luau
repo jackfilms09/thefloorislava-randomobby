@@ -5,7 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage") -- holds the Remo
 local Workspace = game:GetService("Workspace") -- world container that platforms, lava, and spawn exist inside
 local Debris = game:GetService("Debris") -- available for timed cleanup though pooling avoids most use
 
-math.randomseed(tick()*99999) -- ensures randomized platform patterns each round
+math.randomseed(os.clock()*99999) -- ensures randomized platform patterns each round
 
 -- RemoteEvent communicating server -> client UI
 local EVT = Instance.new("RemoteEvent") -- Creates the RemoteEevnt
@@ -259,9 +259,9 @@ end
 -- Lava rising (progress-based hazard increase)
 
 local function raiseLava()
-	local t0 = tick() -- round start timestamp
+	local t0 = os.clock() -- round start timestamp
 	while state.running do -- active only during round
-		local elapsed = tick()-t0 -- time since round start
+		local elapsed = os.clock()-t0 -- time since round start
 		local f = elapsed / CFG.roundTime -- normalized 0→1 progression
 		if f>1 then f=1 end -- clamp end
 
@@ -318,8 +318,8 @@ local function runRound()
 	EVT:FireAllClients("Round Started!") -- UI shift to active state
 	task.spawn(raiseLava) -- begin hazard progression asynchronously
 
-	local t0 = tick() -- timestamp for round duration control
-	while tick()-t0 < CFG.roundTime do -- main gameplay loop
+	local t0 = os.clock() -- timestamp for round duration control
+	while os.clock()-t0 < CFG.roundTime do -- main gameplay loop
 		if everyoneDead() then break end -- terminate early if no survivors
 		spawnWave() -- add new platforms to expand playable area
 		task.wait(CFG.spawnTick)
