@@ -1,7 +1,9 @@
--- Updated for re review
--- Converted to a modulescript for knit to show open-Source Libraries Understanding :)
+--Added physics and metatables for re-review
+--Changed falling Platforms CFrame Based to Physics Based 
+--Made falling platforms not collide with players while they are fading
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ReplicatedStorage = game:GetService("ReplicatedStorage") --Shared storage between client and server
+local PhysicsService = game:GetService("PhysicsService") --Service to use roblox's inbuilt physics APIs
 local Knit = nil
 --pcall prevents script stopping incase script gives error
 pcall(function() Knit = require(ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Knit")) end)
@@ -11,6 +13,23 @@ if not Knit then
 	function Knit.CreateService(name, tbl) tbl = tbl or {}; tbl._name = name; return tbl end
 	function Knit.Start() end
 end
+
+--Collision groups allows to put different physics of one object with one object, and different with another
+pcall(function()
+	PhysicsService:CreateCollisionGroup("Platforms")
+	PhysicsService:CreateCollisionGroup("FallingPlatforms")
+	PhysicsService:CreateCollisionGroup("Players")
+	PhysicsService:CreateCollisionGroup("LavaGroup")
+end)
+
+pcall(function()
+	PhysicsService:CollisionGroupSetCollidable("Platforms", "FallingPlatforms", false)-- falling platforms pass through anchored platforms
+	PhysicsService:CollisionGroupSetCollidable("Platforms", "Players", true) -- players stand on platforms
+	PhysicsService:CollisionGroupSetCollidable("FallingPlatforms", "Players", false) -- falling pieces do not shove players
+	PhysicsService:CollisionGroupSetCollidable("FallingPlatforms", "Platforms", false)-- falling debris passes through other platforms
+	PhysicsService:CollisionGroupSetCollidable("LavaGroup", "Platforms", false)-- lava does not collide with platforms
+	PhysicsService:CollisionGroupSetCollidable("LavaGroup", "FallingPlatforms", false) -- lava does not collide with falling pieces
+end)
 
 local FloorIsLavaService = Knit.CreateService {
 	Name = "FloorIsLavaService"
@@ -71,6 +90,8 @@ function FloorIsLavaService:KnitInit()
 		Lava.Parent = Workspace
 	end
 
+	PhysicsService:SetPartCollisionGroup(Lava, "LavaGroup")
+
 	Lava.Touched:Connect(function(hit) -- handles elimination event-driven instead of polling
 		local h = hit.Parent:FindFirstChildOfClass("Humanoid")
 		if h then h.Health = 0 end -- ensures immediate hazard response
@@ -82,6 +103,7 @@ function FloorIsLavaService:KnitInit()
 		local p = Instance.new("Part") -- base component that determines actual jump size
 		p.Size = size
 		p.Anchored = true -- template doesn't move; only clones do
+		PhysicsService:SetPartCollisionGroup(p, "Platforms")
 
 		local m = Instance.new("Model") -- grouped so scaling and repositioning happens cleanly
 		p.Parent = m
@@ -121,10 +143,20 @@ function FloorIsLavaService:KnitInit()
 		active = {} -- list of currently visible platforms
 	}
 
+	local State = {}
+	State.__index = State
+
+	function State:IsRunning()
+		return self.running
+	end
+
+	setmetatable(state, State)
+
 	local function makeFall(m)
 		-- defensive checks
 		if not m or not m.PrimaryPart then return end
 		local p = m.PrimaryPart
+		PhysicsService:SetPartCollisionGroup(p, "FallingPlatforms")
 
 		-- avoid double-trigger
 		if p:GetAttribute("Falling") then return end
@@ -136,14 +168,36 @@ function FloorIsLavaService:KnitInit()
 		-- short delay before releasing physics
 		task.wait(1)
 
-		-- enable physics fall
-		p.Anchored = false
+		-- enable physics fall (realistic)
+        p.Anchored = false
 
-		-- fade out smoothly (clamped)
-		for t = 0, 1, 0.1 do
-			p.Transparency = math.clamp(t, 0, 1)
-			task.wait(0.05)
-		end
+        -- add downward force (scaled by platform mass)
+        local mass = p:GetMass()
+        local force = Instance.new("VectorForce")
+        force.Force = Vector3.new(0, -mass * 100, 0) -- adjustable fall speed
+        force.RelativeTo = Enum.ActuatorRelativeTo.World
+        force.ApplyAtCenterOfMass = true
+        force.Parent = p
+
+        -- allow rotation while falling
+        local ang = Instance.new("AngularVelocity")
+        ang.AngularVelocity = Vector3.new(
+	        math.random(-5,5),
+	        math.random(-5,5),
+	        math.random(-5,5)
+        )
+        ang.RelativeTo = Enum.ActuatorRelativeTo.Attachment0
+        ang.Parent = p
+
+        -- fade out smoothly (clamped)
+        for t = 0, 1, 0.1 do
+	        p.Transparency = math.clamp(t, 0, 1)
+	        task.wait(0.05)
+        end
+
+        -- cleanup force objects after fade
+        force:Destroy()
+        ang:Destroy()
 
 		-- remove from active list safely
 		for i = #state.active, 1, -1 do
@@ -173,6 +227,7 @@ function FloorIsLavaService:KnitInit()
 				primary.Transparency = 0
 				primary:SetAttribute("Falling", false)
 				primary.CFrame = originalCF -- respawn exactly where the fallen one was
+				PhysicsService:SetPartCollisionGroup(primary, "Platforms")
 			end
 
 			-- make sure Pool folder exists and insert into both Pool and state.pool
@@ -188,7 +243,11 @@ function FloorIsLavaService:KnitInit()
 	local function cloneToPool() -- creates new pooled platform when pool low
 		local arr = Templates:GetChildren()
 		local t = arr[math.random(1,#arr)]:Clone() -- pick a random blueprint to increase variety
-		getPrimary(t).CFrame = CFrame.new(0,-2000,0) -- hide immediately
+		local primary = getPrimary(t)
+		if primary then
+			primary.CFrame = CFrame.new(0,-2000,0) -- hide immediately
+			PhysicsService:SetPartCollisionGroup(primary, "Platforms")
+		end
 		t.Parent = Pool
 		return t
 	end
@@ -208,7 +267,11 @@ function FloorIsLavaService:KnitInit()
 	end
 
 	local function release(m) -- returns a platform back to hidden pool
-		getPrimary(m).CFrame = CFrame.new(0,-2000,0) -- hide from active area
+		local p = getPrimary(m)
+		if p then
+			p.CFrame = CFrame.new(0,-2000,0) -- hide from active area
+			PhysicsService:SetPartCollisionGroup(p, "Platforms")
+		end
 		m.Parent = Pool
 		table.insert(state.pool,m)
 	end
@@ -218,6 +281,9 @@ function FloorIsLavaService:KnitInit()
 
 		local m = acquire()
 		local p = getPrimary(m)
+		if not p then return end
+
+		PhysicsService:SetPartCollisionGroup(p, "Platforms")
 
 		local s = CFG.scaleMin + math.random()*(CFG.scaleMax-CFG.scaleMin) -- size-changes vary jumping difficulty
 		p.Size = p.Size * s
@@ -277,7 +343,7 @@ function FloorIsLavaService:KnitInit()
 
 	local function raiseLava()
 		local t0 = os.clock() -- round start timestamp
-		while state.running do -- active only during round
+		while state:IsRunning() do -- active only during round
 			local elapsed = os.clock()-t0 -- time since round start
 			local f = elapsed / CFG.roundTime -- normalized 0→1 progression
 			if f>1 then f=1 end -- clamp end
@@ -297,13 +363,27 @@ function FloorIsLavaService:KnitInit()
 		if not plr.Character then plr:LoadCharacter() task.wait(0.15) end -- ensure body loaded
 		local c = plr.Character
 		if c and c.PrimaryPart then
+			for _, part in ipairs(c:GetDescendants()) do
+				if part:IsA("BasePart") then
+					PhysicsService:SetPartCollisionGroup(part, "Players")
+				end
+			end
 			c:SetPrimaryPartCFrame(SpawnPlatform.CFrame + Vector3.new(0,7,0)) -- spawn slightly above anchor
 		end
 	end
 
+	local function setCharacterCollisionGroup(char)
+		for _, part in ipairs(char:GetDescendants()) do
+			if part:IsA("BasePart") then
+				PhysicsService:SetPartCollisionGroup(part, "Players")
+			end
+		end
+	end
+
 	Players.PlayerAdded:Connect(function(plr)
-		plr.CharacterAdded:Connect(function()
+		plr.CharacterAdded:Connect(function(char)
 			task.wait(0.1) -- allow character to fully load
+			setCharacterCollisionGroup(char)
 			teleport(plr)
 		end)
 	end)
