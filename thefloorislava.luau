@@ -1,9 +1,14 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage") --Shared storage between client and server
 local PhysicsService = game:GetService("PhysicsService") --Service to use roblox's inbuilt physics APIs
 local Knit = {}
+
+--Knit helps to organise server and client code better
 Knit = require(ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Knit"))
-function Knit.CreateService(name, tbl) tbl = tbl or {}; tbl._name = name; return tbl end
-function Knit.Start() end
+
+Knit.CreateService(name, tbl) 
+tbl = tbl or {} --Creates table incase we dont mention it
+tbl._name = name --Given same name to refrence the table in script
+Knit.Start() --Initialises Knit Servers
 
 --Collision groups allows to put different physics of one object with one object, and different with another
 PhysicsService:CreateCollisionGroup("Platforms")
