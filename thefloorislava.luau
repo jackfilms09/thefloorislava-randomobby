@@ -10,7 +10,7 @@ tbl = tbl or {} --Creates table incase we dont mention it
 tbl._name = name --Given same name to refrence the table in script
 Knit.Start() --Initialises Knit Servers
 
---Collision groups allows to put different physics of one object with one object, and different with another
+--Collision groups allows to put different physics than default of one set of objects with each other
 PhysicsService:CreateCollisionGroup("Platforms")
 PhysicsService:CreateCollisionGroup("FallingPlatforms")
 PhysicsService:CreateCollisionGroup("Players")
