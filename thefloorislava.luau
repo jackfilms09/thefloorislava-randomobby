@@ -1,35 +1,23 @@
---Added physics and metatables for re-review
---Changed falling Platforms CFrame Based to Physics Based 
---Made falling platforms not collide with players while they are fading
-
 local ReplicatedStorage = game:GetService("ReplicatedStorage") --Shared storage between client and server
 local PhysicsService = game:GetService("PhysicsService") --Service to use roblox's inbuilt physics APIs
-local Knit = nil
---pcall prevents script stopping incase script gives error
-pcall(function() Knit = require(ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Knit")) end)
-if not Knit then
-	-- fallback service doesn't error if Knit not present; Knit loader should be present in your project
-	Knit = {}
-	function Knit.CreateService(name, tbl) tbl = tbl or {}; tbl._name = name; return tbl end
-	function Knit.Start() end
-end
+local Knit = {}
+Knit = require(ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Knit"))
+function Knit.CreateService(name, tbl) tbl = tbl or {}; tbl._name = name; return tbl end
+function Knit.Start() end
 
 --Collision groups allows to put different physics of one object with one object, and different with another
-pcall(function()
-	PhysicsService:CreateCollisionGroup("Platforms")
-	PhysicsService:CreateCollisionGroup("FallingPlatforms")
-	PhysicsService:CreateCollisionGroup("Players")
-	PhysicsService:CreateCollisionGroup("LavaGroup")
-end)
+PhysicsService:CreateCollisionGroup("Platforms")
+PhysicsService:CreateCollisionGroup("FallingPlatforms")
+PhysicsService:CreateCollisionGroup("Players")
+PhysicsService:CreateCollisionGroup("LavaGroup")
 
-pcall(function()
-	PhysicsService:CollisionGroupSetCollidable("Platforms", "FallingPlatforms", false)-- falling platforms pass through anchored platforms
-	PhysicsService:CollisionGroupSetCollidable("Platforms", "Players", true) -- players stand on platforms
-	PhysicsService:CollisionGroupSetCollidable("FallingPlatforms", "Players", false) -- falling pieces do not shove players
-	PhysicsService:CollisionGroupSetCollidable("FallingPlatforms", "Platforms", false)-- falling debris passes through other platforms
-	PhysicsService:CollisionGroupSetCollidable("LavaGroup", "Platforms", false)-- lava does not collide with platforms
-	PhysicsService:CollisionGroupSetCollidable("LavaGroup", "FallingPlatforms", false) -- lava does not collide with falling pieces
-end)
+PhysicsService:CollisionGroupSetCollidable("Platforms", "FallingPlatforms", false)-- falling platforms pass through anchored platforms
+PhysicsService:CollisionGroupSetCollidable("Platforms", "Players", true) -- players stand on platforms
+PhysicsService:CollisionGroupSetCollidable("FallingPlatforms", "Players", false) -- falling pieces do not shove players
+PhysicsService:CollisionGroupSetCollidable("FallingPlatforms", "Platforms", false)-- falling debris passes through other platforms
+PhysicsService:CollisionGroupSetCollidable("LavaGroup", "Platforms", false)-- lava does not collide with platforms
+PhysicsService:CollisionGroupSetCollidable("LavaGroup", "FallingPlatforms", false) -- lava does not collide with falling pieces
+
 
 local FloorIsLavaService = Knit.CreateService {
 	Name = "FloorIsLavaService"
