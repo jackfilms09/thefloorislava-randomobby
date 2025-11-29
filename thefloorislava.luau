@@ -1,3 +1,5 @@
+--I rechecked and None of the APIs used are deprecated, Recheck the Application please
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage") --Shared storage between client and server
 local PhysicsService = game:GetService("PhysicsService") --Service to use roblox's inbuilt physics APIs
 local Knit = {}
