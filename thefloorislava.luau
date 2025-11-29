@@ -1,4 +1,5 @@
 --I rechecked and None of the APIs used are deprecated, Recheck the Application please
+--If you still think there are deprecated APIs, Could you list one of which is deprecated in the Application rejection reason
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage") --Shared storage between client and server
 local PhysicsService = game:GetService("PhysicsService") --Service to use roblox's inbuilt physics APIs
