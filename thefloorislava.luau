@@ -1,6 +1,3 @@
---I rechecked and None of the APIs used are deprecated, Recheck the Application please
---If you still think there are deprecated APIs, Could you list one of which is deprecated in the Application rejection reason please
-
 local ReplicatedStorage = game:GetService("ReplicatedStorage") --Shared storage between client and server
 local PhysicsService = game:GetService("PhysicsService") --Service to use roblox's inbuilt physics APIs
 local Knit = {}
@@ -14,17 +11,17 @@ tbl._name = name --Given same name to refrence the table in script
 Knit.Start() --Initialises Knit Servers
 
 --Collision groups allows to put different physics than default of one set of objects with each other
-PhysicsService:CreateCollisionGroup("Platforms")
-PhysicsService:CreateCollisionGroup("FallingPlatforms")
-PhysicsService:CreateCollisionGroup("Players")
-PhysicsService:CreateCollisionGroup("LavaGroup")
+PhysicsService:RegisterCollisionGroup("Platforms")
+PhysicsService:RegisterCollisionGroup("FallingPlatforms")
+PhysicsService:RegisterCollisionGroup("Players")
+PhysicsService:RegisterCollisionGroup("LavaGroup")
 
-PhysicsService:CollisionGroupSetCollidable("Platforms", "FallingPlatforms", false)-- falling platforms pass through anchored platforms
-PhysicsService:CollisionGroupSetCollidable("Platforms", "Players", true) -- players stand on platforms
-PhysicsService:CollisionGroupSetCollidable("FallingPlatforms", "Players", false) -- falling pieces do not shove players
-PhysicsService:CollisionGroupSetCollidable("FallingPlatforms", "Platforms", false)-- falling debris passes through other platforms
-PhysicsService:CollisionGroupSetCollidable("LavaGroup", "Platforms", false)-- lava does not collide with platforms
-PhysicsService:CollisionGroupSetCollidable("LavaGroup", "FallingPlatforms", false) -- lava does not collide with falling pieces
+PhysicsService:CollisionGroupSetActive("Platforms", "FallingPlatforms", false)-- falling platforms pass through anchored platforms
+PhysicsService:CollisionGroupSetActive("Platforms", "Players", true) -- players stand on platforms
+PhysicsService:CollisionGroupSetActive("FallingPlatforms", "Players", false) -- falling pieces do not shove players
+PhysicsService:CollisionGroupSetActive("FallingPlatforms", "Platforms", false)-- falling debris passes through other platforms
+PhysicsService:CollisionGroupSetActive("LavaGroup", "Platforms", false)-- lava does not collide with platforms
+PhysicsService:CollisionGroupSetActive("LavaGroup", "FallingPlatforms", false) -- lava does not collide with falling pieces
 
 
 local FloorIsLavaService = Knit.CreateService {
@@ -86,7 +83,7 @@ function FloorIsLavaService:KnitInit()
 		Lava.Parent = Workspace
 	end
 
-	PhysicsService:SetPartCollisionGroup(Lava, "LavaGroup")
+    Lava.CollisionGroup = "LavaGroup"
 
 	Lava.Touched:Connect(function(hit) -- handles elimination event-driven instead of polling
 		local h = hit.Parent:FindFirstChildOfClass("Humanoid")
@@ -99,7 +96,7 @@ function FloorIsLavaService:KnitInit()
 		local p = Instance.new("Part") -- base component that determines actual jump size
 		p.Size = size
 		p.Anchored = true -- template doesn't move; only clones do
-		PhysicsService:SetPartCollisionGroup(p, "Platforms")
+        p.CollisionGroup = "Platforms"
 
 		local m = Instance.new("Model") -- grouped so scaling and repositioning happens cleanly
 		p.Parent = m
@@ -152,7 +149,7 @@ function FloorIsLavaService:KnitInit()
 		-- defensive checks
 		if not m or not m.PrimaryPart then return end
 		local p = m.PrimaryPart
-		PhysicsService:SetPartCollisionGroup(p, "FallingPlatforms")
+        p.CollisionGroup = "FallingPlatforms"
 
 		-- avoid double-trigger
 		if p:GetAttribute("Falling") then return end
@@ -223,7 +220,7 @@ function FloorIsLavaService:KnitInit()
 				primary.Transparency = 0
 				primary:SetAttribute("Falling", false)
 				primary.CFrame = originalCF -- respawn exactly where the fallen one was
-				PhysicsService:SetPartCollisionGroup(primary, "Platforms")
+                primary.CollisionGroup = "Platforms"
 			end
 
 			-- make sure Pool folder exists and insert into both Pool and state.pool
@@ -242,7 +239,7 @@ function FloorIsLavaService:KnitInit()
 		local primary = getPrimary(t)
 		if primary then
 			primary.CFrame = CFrame.new(0,-2000,0) -- hide immediately
-			PhysicsService:SetPartCollisionGroup(primary, "Platforms")
+            primary.CollisionGroup = "Platforms"
 		end
 		t.Parent = Pool
 		return t
@@ -266,7 +263,7 @@ function FloorIsLavaService:KnitInit()
 		local p = getPrimary(m)
 		if p then
 			p.CFrame = CFrame.new(0,-2000,0) -- hide from active area
-			PhysicsService:SetPartCollisionGroup(p, "Platforms")
+            p.CollisionGroup = "Platforms"
 		end
 		m.Parent = Pool
 		table.insert(state.pool,m)
@@ -279,7 +276,7 @@ function FloorIsLavaService:KnitInit()
 		local p = getPrimary(m)
 		if not p then return end
 
-		PhysicsService:SetPartCollisionGroup(p, "Platforms")
+        p.CollisionGroup = "Platforms"
 
 		local s = CFG.scaleMin + math.random()*(CFG.scaleMax-CFG.scaleMin) -- size-changes vary jumping difficulty
 		p.Size = p.Size * s
@@ -361,7 +358,7 @@ function FloorIsLavaService:KnitInit()
 		if c and c.PrimaryPart then
 			for _, part in ipairs(c:GetDescendants()) do
 				if part:IsA("BasePart") then
-					PhysicsService:SetPartCollisionGroup(part, "Players")
+                    part.CollisionGroup = "Players"
 				end
 			end
 			c:SetPrimaryPartCFrame(SpawnPlatform.CFrame + Vector3.new(0,7,0)) -- spawn slightly above anchor
@@ -371,7 +368,7 @@ function FloorIsLavaService:KnitInit()
 	local function setCharacterCollisionGroup(char)
 		for _, part in ipairs(char:GetDescendants()) do
 			if part:IsA("BasePart") then
-				PhysicsService:SetPartCollisionGroup(part, "Players")
+                part.CollisionGroup = "Players"
 			end
 		end
 	end
