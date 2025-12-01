@@ -1,3 +1,5 @@
+--Removed and changed deprecated CreateCollisionGroup, SetPartCollisionGroup, and CollisionGroupSetCollidable
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage") --Shared storage between client and server
 local PhysicsService = game:GetService("PhysicsService") --Service to use roblox's inbuilt physics APIs
 local Knit = {}
