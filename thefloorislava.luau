@@ -1,11 +1,10 @@
---Removed and changed deprecated CreateCollisionGroup, SetPartCollisionGroup, and CollisionGroupSetCollidable
-
+local Players = game:GetService("Players") -- used for getting survivors and teleporting each round
+local Workspace = game:GetService("Workspace") -- world container that platforms, lava, and spawn exist inside
+local Debris = game:GetService("Debris") -- available for timed cleanup though pooling avoids most use
 local ReplicatedStorage = game:GetService("ReplicatedStorage") --Shared storage between client and server
 local PhysicsService = game:GetService("PhysicsService") --Service to use roblox's inbuilt physics APIs
-local Knit = {}
-
+local Knit = require(ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Knit"))
 --Knit helps to organise server and client code better
-Knit = require(ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Knit"))
 
 Knit.CreateService(name, tbl) 
 tbl = tbl or {} --Creates table incase we dont mention it
@@ -31,10 +30,6 @@ local FloorIsLavaService = Knit.CreateService {
 }
 
 function FloorIsLavaService:KnitInit()
-	local Players = game:GetService("Players") -- used for getting survivors and teleporting each round
-	local ReplicatedStorage = game:GetService("ReplicatedStorage") -- holds the RemoteEvent that broadcasts round state
-	local Workspace = game:GetService("Workspace") -- world container that platforms, lava, and spawn exist inside
-	local Debris = game:GetService("Debris") -- available for timed cleanup though pooling avoids most use
 
 	math.randomseed(os.clock()*99999) -- ensures randomized platform patterns each round
 
